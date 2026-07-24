@@ -11,6 +11,9 @@
 단순히 기술을 나열하는 것이 아니라, **비즈니스 요구사항 → 기술 제약 → 트레이드오프 분석 → 최적 선택** 순서로 사고합니다.
 모든 아키텍처 결정에는 **왜 이 선택을 했는가(ADR)**를 함께 기록합니다.
 
+> **📌 이 가이드는 도메인에 무관하게 적용됩니다.**
+> 아래 예시는 설명의 편의를 위해 이커머스 도메인을 사용하지만, 동일한 아키텍처 원칙과 결정 프레임워크를 SaaS·핀테크·헬스케어·물류·소셜 등 **모든 시스템 설계에 그대로 적용**합니다.
+
 ---
 
 ## 1. 아키텍처 설계 착수 전 필수 파악 사항
@@ -82,24 +85,24 @@
 ### 3-2. PostgreSQL 설계 원칙
 
 ```sql
--- 기본 테이블 설계 원칙
-CREATE TABLE orders (
+-- 기본 테이블 설계 원칙 — 어떤 도메인이든 이 구조를 따른다
+-- (예: articles, projects, reservations, subscriptions 등 모두 동일한 패턴)
+CREATE TABLE resources (           -- 실제로는 articles / projects / tasks 등 도메인 이름 사용
     id          BIGSERIAL PRIMARY KEY,
-    public_id   UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,  -- 외부 노출용 ID
+    public_id   UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,  -- 외부 노출용 ID (순차 스캔 공격 방지)
     user_id     BIGINT NOT NULL REFERENCES users(id),
     status      VARCHAR(20) NOT NULL,
-    total_amount NUMERIC(15,2) NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 인덱스 전략
+-- 인덱스 전략 — 도메인 무관하게 동일한 기준 적용
 -- 1. 자주 조회하는 WHERE 조건 컬럼
-CREATE INDEX idx_orders_user_id ON orders(user_id);
--- 2. 복합 인덱스: 조건 + 정렬
-CREATE INDEX idx_orders_user_status ON orders(user_id, status, created_at DESC);
--- 3. 부분 인덱스: 특정 상태만
-CREATE INDEX idx_orders_active ON orders(user_id) WHERE status IN ('PENDING', 'CONFIRMED');
+CREATE INDEX idx_resources_user_id ON resources(user_id);
+-- 2. 복합 인덱스: 조건 + 정렬 (user_id로 필터 후 status+날짜로 정렬하는 쿼리에 대응)
+CREATE INDEX idx_resources_user_status ON resources(user_id, status, created_at DESC);
+-- 3. 부분 인덱스: 자주 조회되는 특정 상태만 (전체 인덱스 대비 크기 축소)
+CREATE INDEX idx_resources_active ON resources(user_id) WHERE status IN ('ACTIVE', 'PENDING');
 ```
 
 ### 3-3. 외부 ID(Public ID) 패턴 — 보안 필수
@@ -179,8 +182,10 @@ try {
 
 ```
 토픽 설계:
-- 도메인 이벤트 단위로 토픽 분리 (order.created, payment.completed)
-- 파티션 키: 같은 엔티티의 이벤트는 같은 파티션 (userId, orderId)
+- 도메인 이벤트 단위로 토픽 분리
+  예: user.registered, post.published, payment.completed, reservation.confirmed
+- 파티션 키: 같은 엔티티의 이벤트는 같은 파티션 (userId, resourceId)
+  → 같은 사용자/리소스 이벤트가 순서대로 처리됨을 보장
 - 컨슈머 그룹: 서비스별로 분리
 
 멱등성 (Idempotency):

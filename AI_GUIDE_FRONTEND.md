@@ -11,6 +11,10 @@
 단순히 화면을 그리는 것이 아니라, **사용자 경험(UX)·접근성·성능·유지보수성**을 모두 고려한 프로덕션 수준의 컴포넌트를 작성합니다.
 코드 작성 전 반드시 **기존 컴포넌트 구조와 디자인 토큰을 파악**하고 일관성을 유지합니다.
 
+> **📌 이 가이드는 도메인에 무관하게 적용됩니다.**
+> 아래 코드 예시는 설명의 편의를 위해 이커머스 도메인을 사용하지만, 동일한 원칙과 패턴을 대시보드·소셜·B2B SaaS·헬스케어 등 **모든 도메인에 그대로 적용**합니다.
+> 예시의 `OrderCard` → `[도메인]Card`로, `useOrders` → `use[도메인]`으로 치환해서 읽으세요.
+
 ---
 
 ## 1. 코드 작성 전 필수 확인 절차
@@ -32,7 +36,7 @@
 ```
 Page (페이지)
 └─ Layout (레이아웃: Header, Sidebar, Footer)
-   └─ Feature (도메인 기능 단위: OrderList, ProductCard)
+   └─ Feature (도메인 기능 단위: ArticleList, UserCard, ProjectBoard, ReservationForm 등)
       └─ UI (범용 재사용: Button, Input, Modal, Toast)
          └─ Primitive (최소 단위: Typography, Icon, Spinner)
 ```
@@ -103,6 +107,82 @@ export const OrderCard: FC<OrderCardProps> = ({ order, onCancel }) => {
     </div>
   );
 };
+```
+
+### 2-4. 컴포넌트 유지보수성 & 재사용성 원칙
+
+> 6개월 후 다른 개발자가 코드를 보고 **맥락 없이도 이해하고 수정할 수 있는** 컴포넌트를 목표로 합니다.
+
+**관심사 분리 — UI와 비즈니스 로직을 분리한다**
+
+```typescript
+// ❌ UI 컴포넌트에 비즈니스 로직 혼재 — 재사용 불가, 테스트 어려움
+function UserProfile() {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    fetch('/api/users/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data.role === 'ADMIN') data.displayName = '[관리자] ' + data.name;
+        setUser(data);
+      });
+  }, []);
+  return <div>{user?.displayName}</div>;
+}
+
+// ✅ Custom Hook으로 로직 분리 — UI는 표현만, Hook은 로직만
+function useCurrentUser() {
+  const { data } = useQuery({ queryKey: ['me'], queryFn: fetchCurrentUser });
+  const displayName = data?.role === 'ADMIN' ? `[관리자] ${data.name}` : data?.name;
+  return { user: data, displayName };
+}
+
+function UserProfile() {
+  const { displayName } = useCurrentUser();  // UI는 어떻게 보여줄지만 결정
+  return <div>{displayName}</div>;
+}
+```
+
+**Props 설계 — 확장 가능한 인터페이스**
+
+```typescript
+// ❌ 너무 많은 Props — 요구사항 추가마다 Props가 늘어남
+interface CardProps {
+  showBorder?: boolean;
+  showShadow?: boolean;
+  showAvatar?: boolean;
+  showBadge?: boolean;
+  badgeColor?: string;
+  avatarSize?: 'sm' | 'md';
+}
+
+// ✅ 합성(Composition) 패턴 — 필요한 것만 조합
+interface CardProps {
+  variant?: 'default' | 'outlined' | 'elevated';
+  header?: React.ReactNode;   // 무엇이든 올 수 있음
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+// 사용 예 — 변경 없이 확장 가능
+<Card header={<Avatar src={user.photo} />} footer={<LikeButton />}>
+  <ArticleContent />
+</Card>
+```
+
+**단일 책임 — 컴포넌트가 하나의 역할만 갖게 분리한다**
+
+```
+컴포넌트가 너무 커졌다는 신호:
+- 파일이 150줄을 초과했다
+- 한 컴포넌트 안에 3개 이상의 useEffect가 있다
+- 컴포넌트 이름에 'And'가 들어간다 (UserProfileAndSettings)
+- Props가 7개를 초과한다
+
+분리 기준:
+- 로직 → Custom Hook으로 추출
+- 반복 UI 블록 → 하위 컴포넌트로 추출
+- 완전히 독립적인 기능 → 별도 Feature 컴포넌트로 분리
 ```
 
 ---
@@ -192,20 +272,20 @@ const useCartStore = create<CartStore>((set) => ({
 **모든 비동기 작업에는 반드시 Loading, Error, Empty 상태를 처리합니다.**
 
 ```typescript
-// ✅ 완전한 상태 처리
-function OrderList() {
-  const { data, isLoading, error } = useOrders();
+// ✅ 완전한 상태 처리 — 모든 도메인에 동일하게 적용
+function ResourceList() {
+  const { data, isLoading, error, refetch } = useResourceList(); // useArticles, useProjects, useMembers 등
 
-  if (isLoading) return <OrderListSkeleton />;
+  if (isLoading) return <ResourceListSkeleton />;
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
-  if (!data || data.length === 0) return <EmptyState message="주문 내역이 없습니다." />;
+  if (!data || data.length === 0) return <EmptyState message="데이터가 없습니다." />;
 
-  return <div>{data.map(order => <OrderCard key={order.id} order={order} />)}</div>;
+  return <div>{data.map(item => <ResourceCard key={item.id} item={item} />)}</div>;
 }
 
-// ❌ 불완전한 상태 처리
-function OrderList() {
-  const { data } = useOrders();
+// ❌ 불완전한 상태 처리 — 어떤 도메인이든 이렇게 쓰면 안 됨
+function ResourceList() {
+  const { data } = useResourceList();
   return <div>{data?.map(...)}</div>;  // 로딩/에러 상태 없음
 }
 ```
@@ -277,17 +357,18 @@ function OrderForm() {
 
 ```typescript
 // memo: Props가 변하지 않으면 리렌더 방지
-const OrderCard = memo(({ order }: { order: Order }) => { ... });
+const ItemCard = memo(({ item }: { item: Item }) => { ... });
+// 적용 예: ArticleCard, UserCard, ProjectTile, ReservationRow 등
 
 // useCallback: 이벤트 핸들러 메모이제이션
-const handleCancel = useCallback((id: string) => {
-  cancelOrder(id);
-}, [cancelOrder]);
+const handleAction = useCallback((id: string) => {
+  performAction(id);  // deleteItem, publishPost, approveRequest 등
+}, [performAction]);
 
 // useMemo: 비싼 계산 결과 캐시
-const sortedOrders = useMemo(() =>
-  [...orders].sort((a, b) => b.createdAt - a.createdAt),
-  [orders]
+const sortedItems = useMemo(() =>
+  [...items].sort((a, b) => b.createdAt - a.createdAt),
+  [items]
 );
 ```
 

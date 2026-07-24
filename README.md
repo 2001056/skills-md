@@ -11,15 +11,43 @@ Claude Fable 5 한도를 다 쓴 뒤 하위 모델(Sonnet, Haiku 등)을 사용�
 
 ```
 skills-md/
-├── AI_GUIDE_PLANNING.md          # 서비스 기획 / 요구사항 정의
-├── AI_GUIDE_BACKEND.md           # 백엔드 개발 (Spring Boot / NestJS / FastAPI)
-├── AI_GUIDE_FRONTEND.md          # 프론트엔드 개발 (Next.js / React / Vue 3)
-├── AI_GUIDE_ARCHITECTURE.md      # 시스템 아키텍처 설계
-├── AI_GUIDE_GIT_SECURITY_SCAN.md # 커밋 전 보안 검사 (첨부용)
+├── CLAUDE.md                         # 이 레포용 Claude 컨텍스트 파일
+├── CLAUDE.template.md                # 내 프로젝트에 복사해서 쓰는 템플릿
+│
+├── AI_GUIDE_PLANNING.md              # 서비스 기획 / 요구사항 정의
+├── AI_GUIDE_BACKEND.md               # 백엔드 개발 (Spring Boot / NestJS / FastAPI)
+├── AI_GUIDE_FRONTEND.md              # 프론트엔드 개발 (Next.js / React / Vue 3)
+├── AI_GUIDE_ARCHITECTURE.md          # 시스템 아키텍처 설계
+├── AI_GUIDE_GIT_SECURITY_SCAN.md     # 커밋 전 보안 검사 (첨부용)
+│
+├── hooks/
+│   ├── pre-commit                    # git commit 시 자동 보안 검사 훅
+│   ├── install.sh                    # 훅 설치 스크립트 (Linux / macOS / Git Bash)
+│   └── install.ps1                   # 훅 설치 스크립트 (Windows PowerShell)
+│
 └── .agents/
-    └── skills/
-        └── git-security-scan/
-            └── SKILL.md          # /git-security-scan 명령어 스킬
+    ├── skills/                       # 오케스트레이터 진입점 (명령어)
+    │   ├── dev-plan/SKILL.md         # /dev-plan — 기획 단계
+    │   ├── dev-backend/SKILL.md      # /dev-backend — 백엔드 단계
+    │   ├── dev-frontend/SKILL.md     # /dev-frontend — 프론트엔드 단계
+    │   ├── dev-architect/SKILL.md    # /dev-architect — 아키텍처 단계
+    │   └── git-security-scan/SKILL.md  # /git-security-scan — 보안 검사
+    │
+    └── agents/                       # 전문화된 서브에이전트
+        ├── plan-requirements-analyst.md   # 요구사항 분석 + RDS 작성
+        ├── plan-ux-designer.md            # IA + UserFlow + 화면 목록
+        ├── plan-api-designer.md           # API 정책 정의서
+        ├── plan-reviewer.md               # 기획 완성도 검수
+        ├── backend-coder.md               # 프로덕션 코드 구현
+        ├── backend-test-writer.md         # 테스트 코드 (AAA 패턴)
+        ├── backend-doc-writer.md          # Swagger + README 문서
+        ├── backend-reviewer.md            # 백엔드 코드 리뷰
+        ├── frontend-coder.md              # 컴포넌트 구현
+        ├── frontend-a11y-reviewer.md      # 접근성 검수 (WCAG 2.1 AA)
+        ├── frontend-reviewer.md           # 프론트엔드 코드 리뷰
+        ├── architect-designer.md          # 시스템 아키텍처 설계
+        ├── architect-adr-writer.md        # ADR 문서 작성
+        └── architect-reviewer.md          # 아키텍처 설계 검수
 ```
 
 ---
@@ -221,6 +249,61 @@ UX·접근성·성능·유지보수성을 고려한 프로덕션 수준의 컴�
 2. AI 대화창에 AI_GUIDE_GIT_SECURITY_SCAN.md 첨부
 3. 복사한 diff 텍스트 붙여넣기
 → CRITICAL/HIGH 발견 시 커밋 차단, 전체 없으면 커밋 승인
+```
+
+</details>
+
+---
+
+<details>
+<summary><strong>🪝 hooks/pre-commit — git commit 시 자동 보안 검사</strong></summary>
+
+<br>
+
+`git commit` 실행 순간 자동으로 스테이징된 변경사항을 스캔합니다.  
+CRITICAL / HIGH 항목이 발견되면 **커밋 자체를 차단**합니다. AI 없이도 동작하는 순수 쉘 스크립트입니다.
+
+**자동 탐지 항목:**
+
+| 심각도 | 탐지 항목 |
+|---|---|
+| 🔴 CRITICAL | OpenAI/AWS/GitHub/Google/Slack/SendGrid API 키, Private Key, 비밀번호 변수 직접 할당, `.env`/`*.pem`/`*.key` 등 민감 파일 스테이징 |
+| 🟠 HIGH | 디버그 모드 활성화, SSL 검증 비활성화, DB URI 자격증명 포함 |
+
+**설치 방법:**
+
+```bash
+# Linux / macOS / Git Bash
+sh hooks/install.sh
+
+# Windows PowerShell
+PowerShell -ExecutionPolicy Bypass -File hooks/install.ps1
+```
+
+**설치 후 동작:**
+```
+$ git commit -m "feat: add payment API"
+
+✅ git-security-scan: 이상 없음 — 커밋 진행    ← 문제 없을 때
+
+⛔ git-security-scan: 보안 문제 감지 — 커밋이 차단됩니다    ← 문제 발견 시
+────────────────────────────────────────────
+🔴 CRITICAL : 1건
+🟠 HIGH     : 0건
+────────────────────────────────────────────
+🔴 CRITICAL: OpenAI API Key 하드코딩 감지
+```
+
+**gitleaks 연동 (선택):**  
+`gitleaks`가 설치되어 있으면 기본 패턴 스캔 이후 추가로 실행됩니다.
+```bash
+brew install gitleaks   # macOS
+scoop install gitleaks  # Windows
+```
+
+**훅 제거:**
+```bash
+rm .git/hooks/pre-commit
 ```
 
 </details>

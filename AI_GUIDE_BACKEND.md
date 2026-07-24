@@ -11,6 +11,10 @@
 단순히 동작하는 코드를 작성하는 것이 아니라, **확장성·보안·성능·유지보수성**을 모두 고려한 프로덕션 수준의 코드를 작성합니다.
 코드 작성 전 반드시 **기존 코드베이스의 패턴과 컨벤션을 파악**하고, 새 코드가 그 패턴을 따르도록 합니다.
 
+> **📌 이 가이드는 도메인에 무관하게 적용됩니다.**
+> 아래 코드 예시는 설명의 편의를 위해 이커머스 도메인을 사용하지만, 동일한 원칙과 패턴을 SaaS·핀테크·헬스케어·물류·소셜 등 **모든 도메인에 그대로 적용**합니다.
+> 예시의 `Order` → 여러분 도메인의 핵심 엔티티로, `OrderService` → `[도메인]Service`로 치환해서 읽으세요.
+
 ---
 
 ## 1. 코드 작성 전 필수 확인 절차
@@ -55,8 +59,8 @@
 {
   "success": false,
   "data": null,
-  "errorCode": "OUT_OF_STOCK",
-  "message": "재고가 부족합니다."
+  "errorCode": "RESOURCE_NOT_FOUND",  // 도메인별 에러 코드: OUT_OF_STOCK, DUPLICATE_EMAIL, UNAUTHORIZED 등
+  "message": "요청한 리소스를 찾을 수 없습니다."
 }
 ```
 
@@ -65,6 +69,110 @@
 - **인증/인가**: 모든 엔드포인트에 명시적 권한 설정 (기본값: 인증 필요)
 - **민감 정보**: 비밀번호, 토큰, API 키를 로그에 출력하지 않습니다
 - **입력 검증**: 모든 외부 입력값은 Controller/DTO 레이어에서 검증
+
+### 2-5. 유지보수성 & 확장성 원칙
+
+> 지금 동작하는 코드보다 **6개월 후에도 안전하게 수정할 수 있는 코드**를 목표로 합니다.
+
+**SOLID 원칙 체크리스트**
+
+```
+[ ] S — 단일 책임: 클래스/함수 하나는 변경 이유가 하나여야 한다
+[ ] O — 개방/폐쇄: 기능 추가는 기존 코드 수정 없이 확장으로 해결한다
+[ ] L — 리스코프 치환: 하위 타입은 상위 타입을 완전히 대체할 수 있어야 한다
+[ ] I — 인터페이스 분리: 클라이언트가 사용하지 않는 메서드에 의존하지 않도록 한다
+[ ] D — 의존성 역전: 구체 클래스가 아닌 추상(인터페이스)에 의존한다
+```
+
+**의존성 역전 — 인터페이스 기반 설계**
+
+```java
+// ✅ Service는 인터페이스에 의존 → 구현체 교체 가능 (테스트, 다중 구현)
+public interface NotificationSender {
+    void send(String recipient, String message);
+}
+
+// 구현체 1: 이메일
+@Component("email")
+public class EmailNotificationSender implements NotificationSender { ... }
+
+// 구현체 2: SMS
+@Component("sms")
+public class SmsNotificationSender implements NotificationSender { ... }
+
+// Service는 인터페이스만 알면 됨 — 구현체를 몰라도 됨
+@Service
+public class AlertService {
+    private final NotificationSender sender;  // 어떤 구현체든 주입 가능
+
+    public AlertService(@Qualifier("email") NotificationSender sender) {
+        this.sender = sender;
+    }
+}
+```
+
+**매직 넘버 / 매직 문자열 제거**
+
+```java
+// ❌ 의미를 알 수 없는 숫자와 문자열
+if (user.getLoginFailCount() >= 5) {
+    user.setStatus("LOCKED");
+}
+
+// ✅ 상수와 열거형으로 의도 명시
+public enum UserStatus { ACTIVE, LOCKED, WITHDRAWN }
+
+public class SecurityPolicy {
+    public static final int MAX_LOGIN_FAIL_COUNT = 5;
+}
+
+if (user.getLoginFailCount() >= SecurityPolicy.MAX_LOGIN_FAIL_COUNT) {
+    user.changeStatus(UserStatus.LOCKED);
+}
+```
+
+**계층 경계 준수**
+
+```
+Controller   ←→  Service   ←→  Repository
+                                    ↕
+                                  Domain
+
+절대 금지:
+- Controller가 Repository를 직접 호출
+- Domain 객체가 Repository를 직접 참조
+- 여러 Repository를 Controller에서 조합해 비즈니스 로직 수행
+
+이유: 계층이 섞이면 로직이 분산되어 변경 시 영향 범위 파악이 불가능해집니다.
+```
+
+**변경에 유연한 코드 작성 원칙**
+
+```java
+// ❌ 구현 세부사항이 상위 레이어에 노출 — 외부 라이브러리 변경 시 전파 범위 커짐
+public List<UserDocument> findActiveUsers() {  // MongoDB Document 타입 직접 반환
+    return mongoTemplate.find(query, UserDocument.class);
+}
+
+// ✅ 도메인 객체로 변환해서 반환 — 저장소 기술이 바뀌어도 호출부 영향 없음
+public List<User> findActiveUsers() {
+    return mongoTemplate.find(query, UserDocument.class)
+        .stream()
+        .map(UserDocument::toDomain)
+        .collect(toList());
+}
+```
+
+**YAGNi — 지금 필요하지 않은 것은 만들지 않는다**
+
+```
+현재 요구사항에 없는 추상화, 플러그인 구조, 제네릭 팩토리를 미리 만들지 않습니다.
+확장이 실제로 필요해질 때 리팩터링합니다.
+
+단, 이것은 범용 원칙과 충돌하지 않습니다:
+- 인터페이스 분리: 지금도 테스트를 위해 필요 (YAGNI 예외)
+- 계층 분리: 지금도 변경 비용을 낮추기 위해 필요 (YAGNI 예외)
+```
 
 ---
 
@@ -82,19 +190,19 @@ Domain      → 엔티티, 값 객체, 도메인 이벤트
 ### 3-2. 필수 어노테이션 패턴
 
 ```java
-// Controller
+// Controller — [도메인]Controller 패턴 (예시: ArticleController, ProjectController, ReservationController 등)
 @RestController
-@RequestMapping("/api/v1/orders")
+@RequestMapping("/api/v1/{resource}")  // 실제 서비스에서는 /api/v1/articles 등 구체적인 리소스명 사용
 @RequiredArgsConstructor
-public class OrderController {
+public class ResourceController {
 
-    private final OrderService orderService;
+    private final ResourceService resourceService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
-            @RequestBody @Valid CreateOrderRequest request,
+    public ResponseEntity<ApiResponse<ResourceResponse>> create(
+            @RequestBody @Valid CreateResourceRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(ApiResponse.success(orderService.createOrder(request, userDetails)));
+        return ResponseEntity.ok(ApiResponse.success(resourceService.create(request, userDetails)));
     }
 }
 ```
@@ -308,21 +416,27 @@ result = await chain.ainvoke({"input": raw_text})
 ### 6-1. URL 설계 규칙
 
 ```
-# 리소스는 명사, 복수형
-GET    /api/v1/orders          # 목록 조회
-POST   /api/v1/orders          # 생성
-GET    /api/v1/orders/{id}     # 단건 조회
-PUT    /api/v1/orders/{id}     # 전체 수정
-PATCH  /api/v1/orders/{id}     # 부분 수정
-DELETE /api/v1/orders/{id}     # 삭제
+# 리소스는 명사, 복수형 — 어떤 도메인이든 동일한 패턴 적용
+GET    /api/v1/{resources}          # 목록 조회
+POST   /api/v1/{resources}          # 생성
+GET    /api/v1/{resources}/{id}     # 단건 조회
+PUT    /api/v1/{resources}/{id}     # 전체 수정
+PATCH  /api/v1/{resources}/{id}     # 부분 수정
+DELETE /api/v1/{resources}/{id}     # 삭제
+
+# 실제 예시 (다양한 도메인)
+GET  /api/v1/articles         GET  /api/v1/projects       GET  /api/v1/reservations
+POST /api/v1/users            POST /api/v1/documents      POST /api/v1/subscriptions
 
 # 상태 변경은 동사 사용 (RPC-style 허용)
-POST /api/v1/orders/{id}/cancel
-POST /api/v1/orders/{id}/confirm
+POST /api/v1/{resources}/{id}/publish    # 게시
+POST /api/v1/{resources}/{id}/cancel     # 취소
+POST /api/v1/{resources}/{id}/approve    # 승인
 
 # 중첩 리소스: 2depth까지만
-GET /api/v1/users/{userId}/orders  # ✅
-GET /api/v1/users/{userId}/orders/{orderId}/items  # ❌ 너무 깊음
+GET /api/v1/users/{userId}/posts      # ✅ 블로그
+GET /api/v1/teams/{teamId}/members    # ✅ 팀 관리
+GET /api/v1/projects/{id}/tasks/{taskId}/comments  # ❌ 너무 깊음
 ```
 
 ### 6-2. HTTP 상태 코드 기준
