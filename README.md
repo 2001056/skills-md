@@ -23,7 +23,11 @@ skills-md/
 ├── hooks/
 │   ├── pre-commit                    # git commit 시 자동 보안 검사 훅
 │   ├── install.sh                    # 훅 설치 스크립트 (Linux / macOS / Git Bash)
-│   └── install.ps1                   # 훅 설치 스크립트 (Windows PowerShell)
+│   ├── install.ps1                   # 훅 설치 스크립트 (Windows PowerShell)
+│   └── install-claude-hooks.sh       # Claude Code 훅(라우터+게이트) 설치
+│
+├── tests/
+│   └── test_gates.sh                 # 훅 테스트 (차단·통과 양방향 검증)
 │
 └── .agents/
     ├── skills/                       # 오케스트레이터 진입점 (명령어)
@@ -32,6 +36,11 @@ skills-md/
     │   ├── dev-frontend/SKILL.md     # /dev-frontend — 프론트엔드 단계
     │   ├── dev-architect/SKILL.md    # /dev-architect — 아키텍처 단계
     │   └── git-security-scan/SKILL.md  # /git-security-scan — 보안 검사
+    │
+    ├── hooks/                        # Claude Code 훅 — 자동 라우터 + 종료 게이트
+    │   ├── router.py                 # UserPromptSubmit: 작업 신호 감지 → 스킬·증거 요건 주입
+    │   ├── stop_gate.py              # Stop: 완료 증거 없이 턴 종료 차단
+    │   └── claude-settings.hooks.json  # settings.json 에 병합할 훅 설정
     │
     └── agents/                       # 전문화된 서브에이전트
         ├── plan-requirements-analyst.md   # 요구사항 분석 + RDS 작성
@@ -340,6 +349,42 @@ cp -r skills-md/.agents /내-프로젝트/
 
 ---
 
+## 🪝 Claude Code 훅 — 자동 라우터 + 종료 게이트
+
+`.md` 가이드는 모델이 **따르지 않으면 그만**입니다. 이 훅 두 개는 그 빈틈을 메웁니다.
+
+| 훅 | 이벤트 | 하는 일 |
+|---|---|---|
+| `router.py` | `UserPromptSubmit` | 프롬프트의 작업 신호(API·컴포넌트·기획·아키텍처·버그…)를 감지해 **맞는 스킬과 "끝내기 전 있어야 할 증거 파일"**을 컨텍스트로 주입. 신호가 없으면 개입하지 않음 |
+| `stop_gate.py` | `Stop` | 라우터가 남긴 티켓(`_workspace/.active-run`)이 있는데 증거 파일이 없거나 비어 있으면 **턴 종료를 차단**하고 빠진 항목을 알려줌 |
+
+**완료 증거 계약** (스킬이 이미 쓰는 `_workspace/` 산출물을 그대로 사용):
+
+| 규율 | 작업공간 | 필요한 증거 |
+|---|---|---|
+| `/dev-plan` | `_workspace/plan-*/` | `04_review.md` |
+| `/dev-backend` | `_workspace/backend-*/` | `04_review.md` |
+| `/dev-frontend` | `_workspace/frontend-*/` | `03_review.md` |
+| `/dev-architect` | `_workspace/architect-*/` | `03_review.md` |
+| 조사(버그·에러) | `_workspace/investigate-*/` | `evidence.md` 에 `## 재현` `## 가설` `## 원인` 섹션 |
+| `/git-security-scan` | 없음 | 게이트 비대상 |
+
+**설치 (프로젝트 루트에서):**
+```sh
+sh hooks/install-claude-hooks.sh     # .claude/settings.json 에 훅 병합 (멱등)
+sh tests/test_gates.sh               # 차단·통과 양방향 검증
+```
+
+**안전장치:**
+- 티켓이 없으면(일반 대화) 절대 막지 않습니다.
+- `stop_hook_active` 로 무한루프를 막습니다 (한 번 막은 뒤 이어가는 턴은 통과).
+- 낡은 티켓(기본 6시간)은 자동 정리됩니다.
+- 우회: `SKILLS_MD_GATE=off` · 해제: 프롬프트에 `게이트 해제`
+
+> 이 훅은 모델의 **천장을 올리지 않습니다.** 증거 없이 "완료"라고 말하는 걸 막아, 모델이 자기 천장까지 확실히 가게 하는 장치입니다.
+
+---
+
 ## ⚡ 빠른 시작 예시
 
 ### 기획서 작성
@@ -383,6 +428,7 @@ AI_GUIDE_GIT_SECURITY_SCAN.md 첨부해서 붙여넣기
 
 - **AI_GUIDE_*.md**: AI 모델 대화가 가능한 모든 환경 (Claude, ChatGPT, Gemini 등)
 - **`.agents/skills/`**: Claude Code / AWS Code / Kiro CLI
+- **`.agents/hooks/`**: Claude Code + python3 (3.9 이상)
 
 ---
 

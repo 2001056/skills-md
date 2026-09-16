@@ -11,7 +11,9 @@
 AI_GUIDE_*.md          도메인별 개발 가이드 (AI에게 첨부하거나 @include)
 .agents/agents/        전문화된 서브에이전트 정의 파일
 .agents/skills/        에이전트를 오케스트레이션하는 스킬 진입점
-hooks/                 git pre-commit 보안 스캔 훅
+hooks/                 git pre-commit 보안 스캔 훅 + Claude Code 훅 설치 스크립트
+.agents/hooks/         Claude Code 훅 (자동 라우터 · 종료 게이트)
+tests/                 훅 테스트 (차단·통과 양방향)
 ```
 
 ---
@@ -73,6 +75,20 @@ hooks/                 git pre-commit 보안 스캔 훅
 6. README.md 업데이트
 
 ---
+
+### 새 규율(라우팅 대상) 추가 시 (`.agents/hooks/router.py`)
+
+1. `DISCIPLINES` 리스트에 항목 추가 — 순서가 우선순위 (앞에 있을수록 먼저 매칭)
+2. `prefix` 는 해당 스킬의 `_workspace/{prefix}...` 와 정확히 일치시킬 것
+3. `evidence` 는 스킬이 **마지막에 실제로 쓰는 파일명**만 — 없는 파일을 요구하면 영구 차단됨
+4. 작업공간이 없는 스킬은 `prefix: None` (게이트 비대상)
+5. `tests/test_gates.sh` 에 차단 케이스와 통과 케이스를 **둘 다** 추가하고 통과시킬 것
+
+### 훅 수정 시 원칙
+
+- 티켓 없는 일반 대화를 막는 변경은 금지 (`stop_gate.py` 의 "티켓 없으면 통과"는 불변)
+- `stop_hook_active` 무한루프 가드는 제거 금지
+- python 3.9 호환 문법 유지 (`match`, `X | Y` 타입 금지)
 
 ## 작업 시 유의사항
 
