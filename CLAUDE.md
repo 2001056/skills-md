@@ -13,6 +13,7 @@ AI_GUIDE_*.md          도메인별 개발 가이드 (AI에게 첨부하거나 @
 .agents/skills/        에이전트를 오케스트레이션하는 스킬 진입점
 hooks/                 git pre-commit 보안 스캔 훅 + Claude Code 훅 설치 스크립트
 .agents/hooks/         Claude Code 훅 (자동 라우터 · 종료 게이트)
+.claude-plugin/        플러그인 매니페스트 + 마켓플레이스 카탈로그
 tests/                 훅 테스트 (차단·통과 양방향)
 ```
 
@@ -83,6 +84,14 @@ tests/                 훅 테스트 (차단·통과 양방향)
 3. `evidence` 는 스킬이 **마지막에 실제로 쓰는 파일명**만 — 없는 파일을 요구하면 영구 차단됨
 4. 작업공간이 없는 스킬은 `prefix: None` (게이트 비대상)
 5. `tests/test_gates.sh` 에 차단 케이스와 통과 케이스를 **둘 다** 추가하고 통과시킬 것
+
+### 플러그인 매니페스트 규칙 (`.claude-plugin/`)
+
+- 새 스킬을 추가하면 `plugin.json` 의 `skills` 배열에도 **경로를 추가**할 것 (자동 발견 안 됨 — `.agents/skills/` 는 비표준 위치)
+- 새 에이전트를 추가하면 `plugin.json` 의 `agents` 배열에도 **.md 파일 경로를 추가**할 것 — 디렉터리 경로는 매니페스트 검증에서 거부됨(`agents: Invalid input`), 반드시 파일 단위로
+- 훅 경로는 반드시 `${CLAUDE_PLUGIN_ROOT}` 기준 — 플러그인은 설치 캐시에 놓이므로 상대경로는 깨진다
+- `router.py` / `stop_gate.py` 는 `CLAUDE_PROJECT_DIR` 로 chdir 하므로 `_workspace/` 는 사용자 프로젝트에 생긴다 (이 동작 제거 금지)
+- 버전 올릴 때 `plugin.json` 과 `marketplace.json` 의 `version` 을 함께 올릴 것
 
 ### 훅 수정 시 원칙
 

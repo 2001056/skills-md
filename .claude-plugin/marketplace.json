@@ -1,0 +1,17 @@
+{
+  "name": "skills-md",
+  "owner": { "name": "2001056", "url": "https://github.com/2001056" },
+  "metadata": {
+    "description": "skills-md — 하위 모델용 개발 가이드·스킬 + 자동 라우터·종료 게이트 훅",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "skills-md",
+      "source": "./",
+      "description": "기획·아키텍처·백엔드·프론트·보안검사 오케스트레이터 스킬 5종 + 작업 신호 자동 라우터 + 증거 기반 종료 게이트. 한국어 가이드.",
+      "category": "workflow",
+      "tags": ["korean", "workflow", "verification", "hooks"]
+    }
+  ]
+}

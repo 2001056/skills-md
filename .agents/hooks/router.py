@@ -18,6 +18,11 @@ import re
 import sys
 import time
 
+# 플러그인 모드: 훅은 설치 캐시가 아니라 사용자 프로젝트 디렉토리 기준으로 돌아야 한다.
+_proj = os.environ.get("CLAUDE_PROJECT_DIR")
+if _proj and os.path.isdir(_proj):
+    os.chdir(_proj)
+
 TICKET = os.path.join("_workspace", ".active-run")
 
 # 규율 정의 — 순서가 우선순위. 앞에 있을수록 먼저 매칭.

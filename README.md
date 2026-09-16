@@ -11,8 +11,13 @@ Claude Fable 5 한도를 다 쓴 뒤 하위 모델(Sonnet, Haiku 등)을 사용�
 
 ```
 skills-md/
+├── .gitignore                        # .omc/ · _workspace/ 커밋 제외
 ├── CLAUDE.md                         # 이 레포용 Claude 컨텍스트 파일
 ├── CLAUDE.template.md                # 내 프로젝트에 복사해서 쓰는 템플릿
+│
+├── .claude-plugin/
+│   ├── plugin.json                   # Claude Code 플러그인 매니페스트
+│   └── marketplace.json              # 이 레포를 마켓플레이스로 등록하는 카탈로그
 │
 ├── AI_GUIDE_PLANNING.md              # 서비스 기획 / 요구사항 정의
 ├── AI_GUIDE_BACKEND.md               # 백엔드 개발 (Spring Boot / NestJS / FastAPI)
@@ -40,7 +45,8 @@ skills-md/
     ├── hooks/                        # Claude Code 훅 — 자동 라우터 + 종료 게이트
     │   ├── router.py                 # UserPromptSubmit: 작업 신호 감지 → 스킬·증거 요건 주입
     │   ├── stop_gate.py              # Stop: 완료 증거 없이 턴 종료 차단
-    │   └── claude-settings.hooks.json  # settings.json 에 병합할 훅 설정
+    │   ├── claude-settings.hooks.json  # settings.json 에 병합할 훅 설정 (수동 설치용)
+    │   └── hooks.json                # 플러그인 설치 시 자동 적용되는 훅 설정
     │
     └── agents/                       # 전문화된 서브에이전트
         ├── plan-requirements-analyst.md   # 요구사항 분석 + RDS 작성
@@ -97,6 +103,36 @@ cp -r skills-md/.agents /내-프로젝트/.agents
 @AI_GUIDE_BACKEND.md
 @AI_GUIDE_FRONTEND.md
 ```
+
+---
+
+### 방법 4 — 플러그인으로 설치 (Claude Code, 권장) ⭐
+
+파일 복사 없이 두 줄로 끝납니다. 스킬 5종 + 서브에이전트 + 자동 라우터·종료 게이트 훅이 한 번에 붙습니다.
+
+```
+/plugin marketplace add 2001056/skills-md
+/plugin install skills-md@skills-md
+```
+
+설치 후 스킬은 플러그인 네임스페이스로 호출합니다:
+
+| 복사 방식 | 플러그인 방식 |
+|---|---|
+| `/dev-plan` | `/skills-md:dev-plan` |
+| `/dev-backend` | `/skills-md:dev-backend` |
+| `/dev-frontend` | `/skills-md:dev-frontend` |
+| `/dev-architect` | `/skills-md:dev-architect` |
+| `/git-security-scan` | `/skills-md:git-security-scan` |
+
+훅(`router.py` · `stop_gate.py`)은 플러그인이 알아서 등록하므로 `install-claude-hooks.sh` 를 따로 돌릴 필요가 없습니다. 작업공간 `_workspace/` 는 여전히 **내 프로젝트 안**에 생깁니다.
+
+```
+/plugin marketplace update skills-md   # 새 버전 받기
+/plugin uninstall skills-md@skills-md  # 제거
+```
+
+> 방법 2·3(복사)과 방법 4(플러그인)를 동시에 쓰면 스킬이 두 벌로 보입니다. 하나만 고르세요.
 
 ---
 

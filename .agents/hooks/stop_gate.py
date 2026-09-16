@@ -20,6 +20,11 @@ import os
 import sys
 import time
 
+# 플러그인 모드: 훅은 설치 캐시가 아니라 사용자 프로젝트 디렉토리 기준으로 돌아야 한다.
+_proj = os.environ.get("CLAUDE_PROJECT_DIR")
+if _proj and os.path.isdir(_proj):
+    os.chdir(_proj)
+
 TICKET = os.path.join("_workspace", ".active-run")
 STALE_SECONDS = int(os.environ.get("SKILLS_MD_GATE_STALE", str(6 * 3600)))
 MIN_BYTES = 40  # "비어 있지 않음"의 하한. 제목 한 줄만 있는 껍데기 파일을 걸러낸다.

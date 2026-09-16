@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/.agents/hooks/router.py\"",
+            "timeout": 10,
+            "statusMessage": "skills-md 라우터"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/.agents/hooks/stop_gate.py\"",
+            "timeout": 10,
+            "statusMessage": "skills-md 종료 게이트"
+          }
+        ]
+      }
+    ]
+  }
+}
