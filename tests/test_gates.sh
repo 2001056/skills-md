@@ -84,6 +84,33 @@ router "상품 목록 API" >/dev/null
 check "$(SKILLS_MD_GATE_STALE=0 "$PY" "$HOOKS/stop_gate.py" </dev/null; echo $?)" 0 "STALE=0 → 낡은 티켓 삭제 후 통과"
 [ ! -f _workspace/.active-run ] && ok "낡은 티켓 삭제됨" || bad "티켓 남음"
 
+route(){ printf '{"prompt": %s}' "$(printf '%s' "$1" | "$PY" -c 'import json,sys;print(json.dumps(sys.stdin.read()))')" | "$PY" "$HOOKS/router.py" | head -1; rm -f _workspace/.active-run; }
+expect_route(){ OUT=$(route "$2"); echo "$OUT" | grep -q "감지된 규율: $1 " && ok "$3 → $1" || bad "$3 (기대 $1) 실제: ${OUT:-<출력 없음>}"; }
+
+echo "▶ 10. 라우터: README 빠른 시작 예시 5개가 의도한 규율로 간다"
+expect_route dev-plan          "카카오페이 같은 간편결제 서비스의 송금 기능 요구사항 정의서 작성해줘" "기획 예시"
+expect_route dev-backend       "Spring Boot로 주문 생성 API 만들어줘. 재고 부족 시 409 반환" "백엔드 예시"
+expect_route dev-frontend      "Next.js로 주문 목록 페이지 만들어줘. 로딩/에러/빈 상태 모두 처리해야 해" "프론트 예시 (에러 상태≠버그)"
+expect_route dev-architect     "DAU 10만 이커머스 서비스 아키텍처 설계해줘. 팀은 5명이야" "아키텍처 예시"
+expect_route git-security-scan "커밋 전 보안 검사 해줘" "보안 예시"
+
+echo "▶ 11. 라우터 대조군: 진짜 버그 신고는 여전히 investigate"
+expect_route investigate "로그인 누르면 500 에러 나는데 왜 이래" "500 에러 신고"
+expect_route investigate "결제하면 오류 발생해" "오류 발생"
+expect_route investigate "빌드 실패하는데 원인 찾아줘" "빌드 실패"
+expect_route investigate "버그 있어 고쳐줘" "버그"
+
+echo "▶ 12. 라우터 대조군: 요구사항 표현의 에러/실패는 버그로 안 본다"
+expect_route dev-frontend "에러 메시지 표시 컴포넌트 만들어줘" "에러 메시지 UI"
+expect_route dev-backend  "실패 시 재시도 로직을 결제 API에 넣어줘" "실패 시 재시도 (API+조사 '에')"
+expect_route dev-backend  "DB에 인덱스 추가해줘" "DB+조사 '에'"
+
+echo "▶ 13. 플러그인 모드면 스킬을 /skills-md: 네임스페이스로 표시"
+OUT=$(printf '{"prompt":"회원 API 만들어줘"}' | CLAUDE_PLUGIN_ROOT=/tmp/x "$PY" "$HOOKS/router.py" | head -1); rm -f _workspace/.active-run
+echo "$OUT" | grep -q "/skills-md:dev-backend" && ok "플러그인 모드 → /skills-md:dev-backend" || bad "네임스페이스 미표시: $OUT"
+OUT=$(printf '{"prompt":"회원 API 만들어줘"}' | "$PY" "$HOOKS/router.py" | head -1); rm -f _workspace/.active-run
+echo "$OUT" | grep -q "→ /dev-backend" && ok "복사 모드 → /dev-backend (대조군)" || bad "복사 모드 표시 틀림: $OUT"
+
 echo ""
 echo "────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"

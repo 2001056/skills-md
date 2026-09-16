@@ -3,7 +3,7 @@
   "owner": { "name": "2001056", "url": "https://github.com/2001056" },
   "metadata": {
     "description": "skills-md — 하위 모델용 개발 가이드·스킬 + 자동 라우터·종료 게이트 훅",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "plugins": [
     {

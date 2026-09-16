@@ -423,40 +423,53 @@ sh tests/test_gates.sh               # 차단·통과 양방향 검증
 
 ## ⚡ 빠른 시작 예시
 
+플러그인으로 설치했다면(방법 4) **명령어 없이 프롬프트만 치면 됩니다.** 라우터가 작업 신호를 읽어 맞는 스킬과 완료 증거 조건을 자동으로 붙입니다. 아래 예시 문장은 전부 라우팅 회귀 테스트(`tests/test_gates.sh` 10~12번)로 검증돼 있습니다.
+
+| 방식 | 하는 법 |
+|---|---|
+| 🔌 플러그인 (권장) | 프롬프트만 입력 → 라우터 자동 적용. 직접 부르려면 `/skills-md:dev-*` |
+| 📎 파일 첨부 (모든 AI) | 해당 `AI_GUIDE_*.md` 를 첨부하고 같은 프롬프트 |
+| 📂 복사 방식 | `.agents/` 복사 후 `/dev-*` (Claude Code · AWS Code · Kiro) |
+
 ### 기획서 작성
 ```
-AI_GUIDE_PLANNING.md 첨부 후:
 "카카오페이 같은 간편결제 서비스의 송금 기능 요구사항 정의서 작성해줘"
 ```
+🔌 라우터 → `dev-plan` · 완료 조건 `_workspace/plan-*/04_review.md` · 📎 `AI_GUIDE_PLANNING.md`
 
 ### 백엔드 API 개발
 ```
-AI_GUIDE_BACKEND.md 첨부 후:
 "Spring Boot로 주문 생성 API 만들어줘. 재고 부족 시 409 반환"
 ```
+🔌 라우터 → `dev-backend` · 완료 조건 `_workspace/backend-*/04_review.md` · 📎 `AI_GUIDE_BACKEND.md`
 
 ### 프론트엔드 컴포넌트
 ```
-AI_GUIDE_FRONTEND.md 첨부 후:
 "Next.js로 주문 목록 페이지 만들어줘. 로딩/에러/빈 상태 모두 처리해야 해"
 ```
+🔌 라우터 → `dev-frontend` · 완료 조건 `_workspace/frontend-*/03_review.md` · 📎 `AI_GUIDE_FRONTEND.md`
+
+> "에러 상태 처리"는 요구사항 표현이라 버그 조사로 가지 않습니다. 라우터는 "에러 나요 / 오류 발생해" 같은 **신고 어법**만 조사 규율로 보냅니다.
 
 ### 아키텍처 설계
 ```
-AI_GUIDE_ARCHITECTURE.md 첨부 후:
 "DAU 10만 이커머스 서비스 아키텍처 설계해줘. 팀은 5명이야"
 ```
+🔌 라우터 → `dev-architect` · 완료 조건 `_workspace/architect-*/03_review.md` · 📎 `AI_GUIDE_ARCHITECTURE.md`
+
+### 버그 조사 (플러그인 전용 규율)
+```
+"로그인 누르면 500 에러 나는데 왜 이래"
+```
+🔌 라우터 → 조사 프로토콜 · 완료 조건 `_workspace/investigate-*/evidence.md` 에 `## 재현` `## 가설` `## 원인` 섹션. 재현 없이, 가설 하나로 "고쳤다"고 끝낼 수 없습니다.
 
 ### 커밋 전 보안 검사
 ```bash
 git add .
-/git-security-scan   # Claude Code / AWS Code / Kiro
+/skills-md:git-security-scan   # 플러그인
+/git-security-scan             # 복사 방식 (Claude Code / AWS Code / Kiro)
 ```
-또는
-```
-git diff --staged 출력 복사 후
-AI_GUIDE_GIT_SECURITY_SCAN.md 첨부해서 붙여넣기
-```
+또는 `git diff --staged` 출력을 복사해 `AI_GUIDE_GIT_SECURITY_SCAN.md` 와 함께 붙여넣기.
 
 ---
 

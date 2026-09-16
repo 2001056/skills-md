@@ -44,8 +44,12 @@ DISCIPLINES = [
         "evidence": ["evidence.md"],
         "sections": ["## 재현", "## 가설", "## 원인"],
         "signals": [
-            r"버그", r"에러", r"오류", r"안\s*돼", r"안\s*됨", r"왜\s*(이래|안|그래)", r"디버그", r"debug",
-            r"원인", r"고장", r"깨졌", r"실패", r"crash", r"exception", r"traceback", r"500\b", r"404\b",
+            # 버그 '신고 어법'만 잡는다 — "에러 상태 UI", "실패 시 재시도" 같은 요구사항 표현은 제외
+            r"버그",
+            r"(에러|오류)\s*(가\s*|는\s*|이\s*)?(나|남|났|뜨|떠|뜸|발생|생겨|생기|터져|터짐)",
+            r"실패\s*(해|함|했|하는데|하네|한다|중)",
+            r"안\s*돼", r"안\s*됨", r"왜\s*(이래|안|그래)", r"디버그", r"debug",
+            r"원인", r"고장", r"깨졌", r"crash", r"exception", r"traceback", r"500\b", r"404\b",
         ],
         "rules": (
             "1) 먼저 재현한다 — 재현 못 하면 '재현 불가'를 근거와 함께 기록.\n"
@@ -92,6 +96,29 @@ DISCIPLINES = [
 MULTI_STEP = [r"그리고\s*(나서|난\s*뒤|다음)", r"다음에", r"순서대로", r"단계", r"1\)\s*.+2\)", r"먼저.+(그\s*다음|그리고)", r"\bthen\b"]
 
 
+_LB = r"(?<![A-Za-z0-9])"   # 앞이 영문·숫자가 아니면 경계
+_LA = r"(?![A-Za-z0-9])"    # 뒤가 영문·숫자가 아니면 경계
+
+
+def _kr_boundary(sig):
+    """한국어 조사는 영단어에 바로 붙는다("API에", "DB로", "UI가").
+    파이썬 re 에서 한글도 \\w 라서 \\bAPI\\b 는 "API에"를 못 잡는다.
+    신호 앞뒤의 \\b 를 '영문·숫자 아님' 경계로 바꿔 조사 결합을 통과시킨다."""
+    if sig.startswith(r"\b"):
+        sig = _LB + sig[2:]
+    if sig.endswith(r"\b"):
+        sig = sig[:-2] + _LA
+    return sig
+
+
+def display_skill(d):
+    """플러그인으로 설치된 경우(CLAUDE_PLUGIN_ROOT 존재) 스킬은 /skills-md: 네임스페이스로 호출된다."""
+    s = d["skill"]
+    if s.startswith("/") and os.environ.get("CLAUDE_PLUGIN_ROOT"):
+        return "/skills-md:" + s[1:]
+    return s
+
+
 def read_stdin_json():
     try:
         return json.load(sys.stdin)
@@ -103,20 +130,21 @@ def detect(prompt):
     low = prompt.lower()
     for d in DISCIPLINES:
         for sig in d["signals"]:
+            sig = _kr_boundary(sig)
             if re.search(sig, prompt, re.IGNORECASE) or re.search(sig, low):
                 return d
     return None
 
 
 def is_multi_step(prompt):
-    return any(re.search(p, prompt, re.IGNORECASE) for p in MULTI_STEP)
+    return any(re.search(_kr_boundary(p), prompt, re.IGNORECASE) for p in MULTI_STEP)
 
 
 def write_ticket(d, prompt, multi):
     os.makedirs("_workspace", exist_ok=True)
     ticket = {
         "discipline": d["name"],
-        "skill": d["skill"],
+        "skill": display_skill(d),
         "prefix": d["prefix"],
         "evidence": d["evidence"],
         "sections": d.get("sections", []),
@@ -149,7 +177,7 @@ def main():
 
     multi = is_multi_step(prompt)
     lines = []
-    lines.append("[skills-md router] 감지된 규율: %s → %s" % (d["name"], d["skill"]))
+    lines.append("[skills-md router] 감지된 규율: %s → %s" % (d["name"], display_skill(d)))
     lines.append("규칙: " + d["rules"])
 
     if d["prefix"]:
