@@ -63,15 +63,20 @@ R
 check "$(stop false)" 0 "증거 완비 → 통과"
 [ ! -f _workspace/.active-run ] && ok "통과 후 티켓 삭제" || bad "티켓 남음"
 
-echo "▶ 7. 조사 규율: 섹션 계약까지 검사"
+echo "▶ 7. 조사 규율(dev-investigate): 4단계 산출물 계약"
 OUT=$(router "로그인하면 500 에러 나는데 왜 이래")
-echo "$OUT" | grep -q "investigate" && ok "investigate 감지" || bad "investigate 미감지: $OUT"
-mkdir -p _workspace/investigate-2026-09-16-001
-printf '# 조사\n## 재현\n재현함\n## 가설\n가설 3개\n' > _workspace/investigate-2026-09-16-001/evidence.md
-check "$(stop false)" 2 "## 원인 섹션 없음 → 차단"
-grep -q "## 원인" "$TMP/stderr" && ok "빠진 섹션을 정확히 지목" || bad "빠진 섹션 미지목"
-printf '## 원인\n근본 원인: 토큰 만료 처리 누락\n' >> _workspace/investigate-2026-09-16-001/evidence.md
-check "$(stop false)" 0 "세 섹션 모두 있음 → 통과"
+echo "$OUT" | grep -q "dev-investigate" && ok "dev-investigate 감지" || bad "dev-investigate 미감지: $OUT"
+W=_workspace/investigate-2026-09-16-001; mkdir -p "$W"
+doc(){ printf '# %s\n\n%s\n' "$1" "$2" > "$3"; }
+doc "재현" "절차: 로그인 클릭 → 500. 실제 출력: HTTP 500 {error:token}. 환경: main@abc123. 판정: 재현됨" "$W/01_reproduction.md"
+doc "가설" "H1 토큰 만료 미처리(로직) / H2 세션 스토어 장애(외부) / H3 프록시 타임아웃(환경) — 각 지지·반박·확인법" "$W/02_hypotheses.md"
+check "$(stop false)" 2 "01·02만 있고 03·04 없음 → 차단"
+grep -q "03_root_cause.md" "$TMP/stderr" && grep -q "04_review.md" "$TMP/stderr" && ok "빠진 파일 둘을 정확히 지목" || bad "빠진 파일 미지목: $(cat "$TMP/stderr")"
+doc "원인" "H2·H3 기각(로그 정상). H1 생존: 증상 500 → 만료 토큰 통과 → 갱신·만료검사 부재. 수정 후 01 절차 재실행: 200 OK, 재현 사라짐" "$W/03_root_cause.md"
+check "$(stop false)" 2 "04_review.md 만 없음 → 차단"
+doc "검수" "종합 판정 ✅ 원인 확정 — 재현·가설3·사슬 완결·재검증 통과" "$W/04_review.md"
+check "$(stop false)" 0 "네 파일 모두 있음 → 통과"
+[ ! -f _workspace/.active-run ] && ok "통과 후 티켓 삭제" || bad "티켓 남음"
 
 echo "▶ 8. 우회 스위치"
 router "결제 API 만들어줘" >/dev/null
@@ -95,10 +100,10 @@ expect_route dev-architect     "DAU 10만 이커머스 서비스 아키텍처 �
 expect_route git-security-scan "커밋 전 보안 검사 해줘" "보안 예시"
 
 echo "▶ 11. 라우터 대조군: 진짜 버그 신고는 여전히 investigate"
-expect_route investigate "로그인 누르면 500 에러 나는데 왜 이래" "500 에러 신고"
-expect_route investigate "결제하면 오류 발생해" "오류 발생"
-expect_route investigate "빌드 실패하는데 원인 찾아줘" "빌드 실패"
-expect_route investigate "버그 있어 고쳐줘" "버그"
+expect_route dev-investigate "로그인 누르면 500 에러 나는데 왜 이래" "500 에러 신고"
+expect_route dev-investigate "결제하면 오류 발생해" "오류 발생"
+expect_route dev-investigate "빌드 실패하는데 원인 찾아줘" "빌드 실패"
+expect_route dev-investigate "버그 있어 고쳐줘" "버그"
 
 echo "▶ 12. 라우터 대조군: 요구사항 표현의 에러/실패는 버그로 안 본다"
 expect_route dev-frontend "에러 메시지 표시 컴포넌트 만들어줘" "에러 메시지 UI"

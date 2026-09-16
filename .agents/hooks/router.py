@@ -38,11 +38,10 @@ DISCIPLINES = [
         "rules": "스테이징된 diff 를 CRITICAL/HIGH/MEDIUM/LOW 로 분류해 보고한다.",
     },
     {
-        "name": "investigate",
-        "skill": "(내장 규율) 조사 프로토콜",
+        "name": "dev-investigate",
+        "skill": "/dev-investigate",
         "prefix": "investigate-",
-        "evidence": ["evidence.md"],
-        "sections": ["## 재현", "## 가설", "## 원인"],
+        "evidence": ["01_reproduction.md", "02_hypotheses.md", "03_root_cause.md", "04_review.md"],
         "signals": [
             # 버그 '신고 어법'만 잡는다 — "에러 상태 UI", "실패 시 재시도" 같은 요구사항 표현은 제외
             r"버그",
@@ -52,11 +51,8 @@ DISCIPLINES = [
             r"원인", r"고장", r"깨졌", r"crash", r"exception", r"traceback", r"500\b", r"404\b",
         ],
         "rules": (
-            "1) 먼저 재현한다 — 재현 못 하면 '재현 불가'를 근거와 함께 기록.\n"
-            "2) 경쟁 가설 3개 이상을 세우고, 가설마다 지지/반박 증거를 모은다.\n"
-            "3) 인과 사슬을 끝까지 추적한다 (증상 → 직접 원인 → 근본 원인).\n"
-            "4) 수정 뒤 재현 절차를 다시 돌려 사라졋는지 확인한 결과를 적는다.\n"
-            "위 내용을 evidence.md 의 `## 재현` `## 가설` `## 원인` 섹션에 기록한다."
+            "재현(01_reproduction.md) → 경쟁 가설 3개+(02_hypotheses.md) → 인과 사슬·수정·재검증(03_root_cause.md) → 검수(04_review.md) 순으로 진행한다. "
+            "재현 없이, 가설 하나로 '고쳤다'고 끝내지 않는다. 재현 불가도 결론의 한 종류이며 증거가 필요하다."
         ),
     },
     {

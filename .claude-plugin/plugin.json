@@ -1,6 +1,6 @@
 {
   "name": "skills-md",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "하위 모델(Sonnet·Haiku)에서 Fable 수준 결과물을 끌어내는 개발 가이드·스킬·훅 모음. 기획→아키텍처→백엔드→프론트→보안검사 오케스트레이터에, 작업 신호를 감지해 규율을 주입하는 자동 라우터와 증거 없이 '완료'를 못 하게 막는 종료 게이트를 더했다. 모델의 천장을 올리진 않는다 — 자기 천장까지 확실히 가게 한다.",
   "author": {
     "name": "2001056",
@@ -23,7 +23,8 @@
     "./.agents/skills/dev-architect",
     "./.agents/skills/dev-backend",
     "./.agents/skills/dev-frontend",
-    "./.agents/skills/git-security-scan"
+    "./.agents/skills/git-security-scan",
+    "./.agents/skills/dev-investigate"
   ],
   "agents": [
     "./.agents/agents/architect-adr-writer.md",
@@ -36,6 +37,9 @@
     "./.agents/agents/frontend-a11y-reviewer.md",
     "./.agents/agents/frontend-coder.md",
     "./.agents/agents/frontend-reviewer.md",
+    "./.agents/agents/investigate-analyst.md",
+    "./.agents/agents/investigate-reproducer.md",
+    "./.agents/agents/investigate-reviewer.md",
     "./.agents/agents/plan-api-designer.md",
     "./.agents/agents/plan-requirements-analyst.md",
     "./.agents/agents/plan-reviewer.md",

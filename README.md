@@ -40,6 +40,7 @@ skills-md/
     │   ├── dev-backend/SKILL.md      # /dev-backend — 백엔드 단계
     │   ├── dev-frontend/SKILL.md     # /dev-frontend — 프론트엔드 단계
     │   ├── dev-architect/SKILL.md    # /dev-architect — 아키텍처 단계
+    │   ├── dev-investigate/SKILL.md  # /dev-investigate — 조사 단계 (재현→가설→원인→검수)
     │   └── git-security-scan/SKILL.md  # /git-security-scan — 보안 검사
     │
     ├── hooks/                        # Claude Code 훅 — 자동 라우터 + 종료 게이트
@@ -62,7 +63,10 @@ skills-md/
         ├── frontend-reviewer.md           # 프론트엔드 코드 리뷰
         ├── architect-designer.md          # 시스템 아키텍처 설계
         ├── architect-adr-writer.md        # ADR 문서 작성
-        └── architect-reviewer.md          # 아키텍처 설계 검수
+        ├── architect-reviewer.md          # 아키텍처 설계 검수
+        ├── investigate-reproducer.md      # 문제 재현 (절차·관찰·환경·판정)
+        ├── investigate-analyst.md         # 경쟁 가설 3개+ → 인과 사슬 → 재검증
+        └── investigate-reviewer.md        # 조사 검수
 ```
 
 ---
@@ -123,6 +127,7 @@ cp -r skills-md/.agents /내-프로젝트/.agents
 | `/dev-backend` | `/skills-md:dev-backend` |
 | `/dev-frontend` | `/skills-md:dev-frontend` |
 | `/dev-architect` | `/skills-md:dev-architect` |
+| `/dev-investigate` | `/skills-md:dev-investigate` |
 | `/git-security-scan` | `/skills-md:git-security-scan` |
 
 훅(`router.py` · `stop_gate.py`)은 플러그인이 알아서 등록하므로 `install-claude-hooks.sh` 를 따로 돌릴 필요가 없습니다. 작업공간 `_workspace/` 는 여전히 **내 프로젝트 안**에 생깁니다.
@@ -402,7 +407,7 @@ cp -r skills-md/.agents /내-프로젝트/
 | `/dev-backend` | `_workspace/backend-*/` | `04_review.md` |
 | `/dev-frontend` | `_workspace/frontend-*/` | `03_review.md` |
 | `/dev-architect` | `_workspace/architect-*/` | `03_review.md` |
-| 조사(버그·에러) | `_workspace/investigate-*/` | `evidence.md` 에 `## 재현` `## 가설` `## 원인` 섹션 |
+| `/dev-investigate` | `_workspace/investigate-*/` | `01_reproduction.md` `02_hypotheses.md` `03_root_cause.md` `04_review.md` (4개 모두) |
 | `/git-security-scan` | 없음 | 게이트 비대상 |
 
 **설치 (프로젝트 루트에서):**
@@ -457,11 +462,11 @@ sh tests/test_gates.sh               # 차단·통과 양방향 검증
 ```
 🔌 라우터 → `dev-architect` · 완료 조건 `_workspace/architect-*/03_review.md` · 📎 `AI_GUIDE_ARCHITECTURE.md`
 
-### 버그 조사 (플러그인 전용 규율)
+### 버그 조사
 ```
 "로그인 누르면 500 에러 나는데 왜 이래"
 ```
-🔌 라우터 → 조사 프로토콜 · 완료 조건 `_workspace/investigate-*/evidence.md` 에 `## 재현` `## 가설` `## 원인` 섹션. 재현 없이, 가설 하나로 "고쳤다"고 끝낼 수 없습니다.
+🔌 라우터 → `dev-investigate` · 완료 조건 `_workspace/investigate-*/` 에 `01_reproduction.md` `02_hypotheses.md` `03_root_cause.md` `04_review.md`. 재현 없이, 가설 하나로 "고쳤다"고 끝낼 수 없습니다.
 
 ### 커밋 전 보안 검사
 ```bash
