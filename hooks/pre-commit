@@ -68,7 +68,7 @@ if echo "$ADDED" | grep -qE 'SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}'; then
 fi
 
 # Private Key Header
-if echo "$ADDED" | grep -qE '-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----'; then
+if echo "$ADDED" | grep -qE -e '-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----'; then
   REPORT="${REPORT}\n🔴 CRITICAL: Private Key 하드코딩 감지"
   CRITICAL=$((CRITICAL + 1))
 fi
